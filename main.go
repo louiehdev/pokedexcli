@@ -1,26 +1,22 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"bufio"
 	"os"
 	"strings"
-	"github.com/louiehdev/pokedexcli/internal/utils"
+
+	pokecache "github.com/louiehdev/pokedexcli/internal/cache"
+	pokeapi "github.com/louiehdev/pokedexcli/internal/utils"
 )
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
-	config *commandConfig
+	callback    commandCallback
 }
 
-type commandConfig struct {
-	Next *string
-	Previous *string
-}
-
-var Config commandConfig = commandConfig{Next: nil, Previous: nil}
+type commandCallback func(client *pokeapi.PokeClient) error
 
 func cleanInput(text string) []string {
 	var cleanStrings []string
@@ -45,25 +41,25 @@ func registerCommands() map[string]cliCommand {
 		callback:    commandHelp,
 	}
 	supportedCommands["map"] = cliCommand{
-		name: "map",
+		name:        "map",
 		description: "Show list of 20 locations in the Pokemon world",
-		callback: commandMap,
+		callback:    commandMap,
 	}
 	supportedCommands["mapb"] = cliCommand{
-		name: "map",
+		name:        "mapb",
 		description: "Show previous list of 20 locations if available",
-		callback: commandMapb,
+		callback:    commandMapb,
 	}
 	return supportedCommands
 }
 
-func commandExit() error {
+func commandExit(_client *pokeapi.PokeClient) error {
 	fmt.Print("Closing the Pokedex... Goodbye!\n")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp() error {
+func commandHelp(_client *pokeapi.PokeClient) error {
 	fmt.Print("Welcome to the Pokedex!\nUsage:\n\n")
 	commandRegistry := registerCommands()
 	for _, command := range commandRegistry {
@@ -72,53 +68,56 @@ func commandHelp() error {
 	return nil
 }
 
-func commandMap() error {
-	url := "https://pokeapi.co/api/v2/location-area"
-	if Config.Next != nil {
-		url = *Config.Next
+func commandMap(client *pokeapi.PokeClient) error {
+	url := client.Config.Next
+	if url == nil {
+		url = &client.BaseURL
 	}
-	pokeLocationData, err := utils.GetPokeLocationData(url)
+	pokeLocationData, err := client.GetPokeLocationData(*url)
 	if err != nil {
 		return err
 	}
 	for _, location := range pokeLocationData.Results {
 		fmt.Printf("%v\n", location.Name)
 	}
-	Config.Next = pokeLocationData.Next
-	Config.Previous = pokeLocationData.Previous
+	client.Config.Next = pokeLocationData.Next
+	client.Config.Previous = pokeLocationData.Previous
 	return nil
 }
 
-func commandMapb() error {
-	if Config.Previous == nil {
+func commandMapb(client *pokeapi.PokeClient) error {
+	url := client.Config.Previous
+	if url == nil {
 		fmt.Print("You are on the first page\n")
 		return nil
 	}
-	pokeLocationData, err := utils.GetPokeLocationData(*Config.Previous)
+	pokeLocationData, err := client.GetPokeLocationData(*url)
 	if err != nil {
 		return err
 	}
 	for _, location := range pokeLocationData.Results {
 		fmt.Printf("%v\n", location.Name)
 	}
-	Config.Next = pokeLocationData.Next
-	Config.Previous = pokeLocationData.Previous
+	client.Config.Next = pokeLocationData.Next
+	client.Config.Previous = pokeLocationData.Previous
 	return nil
 }
 
 func main() {
+	newCache := pokecache.NewCache(5)
+	client := pokeapi.NewClient(newCache)
 	scanner := bufio.NewScanner(os.Stdin)
 	commandRegistry := registerCommands()
 
 	for {
-		fmt.Print("Pokedex >")
+		fmt.Print("Pokedex > ")
 		scanner.Scan()
 		input := scanner.Text()
 		cleanedInput := cleanInput(input)
 
 		command, exists := commandRegistry[cleanedInput[0]]
 		if exists {
-			command.callback()
+			command.callback(&client)
 		} else {
 			fmt.Print("Unknown command\n")
 			continue
