@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"bufio"
 	"os"
+	"time"
 	"strings"
 
 	pokecache "github.com/louiehdev/pokedexcli/internal/cache"
@@ -104,7 +105,7 @@ func commandMapb(client *pokeapi.PokeClient) error {
 }
 
 func main() {
-	newCache := pokecache.NewCache(5)
+	newCache := pokecache.NewCache(5 * time.Second)
 	client := pokeapi.NewClient(newCache)
 	scanner := bufio.NewScanner(os.Stdin)
 	commandRegistry := registerCommands()

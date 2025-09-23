@@ -3,7 +3,6 @@ package pokeapi
 import (
 	"fmt"
 	"io"
-	"time"
 	"encoding/json"
 	"net/http"
 
@@ -45,8 +44,8 @@ type PokeLocationArea struct {
 func (p *PokeClient) GetPokeLocationData(url string) (PokeLocationData, error) {
 	var locationData PokeLocationData
 
-	if entry, exists := p.cache.PokeCache[url]; exists {
-		json.Unmarshal(entry.Data, &locationData)
+	if entry, exists := p.cache.Get(url); exists {
+		json.Unmarshal(entry, &locationData)
 		return locationData, nil
 	}
 
@@ -60,7 +59,7 @@ func (p *PokeClient) GetPokeLocationData(url string) (PokeLocationData, error) {
 	if err != nil {
 		return PokeLocationData{}, err
 	}
-	p.cache.PokeCache[url] = pokecache.CacheEntry{CreatedAt: time.Now(), Data: data}
+	p.cache.Add(url, data)
 
 	if err := json.Unmarshal(data, &locationData); err != nil {
 		return PokeLocationData{}, err

@@ -34,11 +34,10 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 func (c *Cache) reapLoop(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 
-	for t := range ticker.C {
+	for range ticker.C {
 		c.mu.Lock()
 		for key, entry := range c.PokeCache {
-			difference := t.Sub(entry.CreatedAt)
-			if difference > interval {
+			if time.Since(entry.CreatedAt) > interval {
 				delete(c.PokeCache, key)
 			}
 		}
@@ -46,10 +45,9 @@ func (c *Cache) reapLoop(interval time.Duration) {
 	}
 }
 
-func NewCache(interval int) *Cache {
-	duration := time.Duration(interval) * time.Second
+func NewCache(interval time.Duration) *Cache {
 	newCache := &Cache{PokeCache: make(map[string]CacheEntry)}
-	go newCache.reapLoop(duration)
+	go newCache.reapLoop(interval)
 	return newCache
 }
 
