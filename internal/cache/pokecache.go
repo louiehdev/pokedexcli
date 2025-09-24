@@ -6,20 +6,20 @@ import (
 )
 
 type Cache struct {
-	mu sync.Mutex
+	mu        sync.Mutex
 	PokeCache map[string]CacheEntry
 }
 
 type CacheEntry struct {
 	CreatedAt time.Time
-	Data []byte
+	Data      []byte
 }
 
 func (c *Cache) Add(key string, data []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.PokeCache[key] = CacheEntry{CreatedAt: time.Now(), Data: data}
-} 
+}
 
 func (c *Cache) Get(key string) ([]byte, bool) {
 	c.mu.Lock()
@@ -50,4 +50,3 @@ func NewCache(interval time.Duration) *Cache {
 	go newCache.reapLoop(interval)
 	return newCache
 }
-
