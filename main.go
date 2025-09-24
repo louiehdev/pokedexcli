@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -62,6 +63,12 @@ func registerCommands() map[string]cliCommand {
 		callback:     commandExplore,
 		requireInput: true,
 	}
+	supportedCommands["catch"] = cliCommand{
+		name: "catch",
+		description: "Attempt to catch inputed Pokemon",
+		callback: commandCatch,
+		requireInput: true,
+	}
 	return supportedCommands
 }
 
@@ -83,7 +90,8 @@ func commandHelp(_client *pokeapi.PokeClient, _input string) error {
 func commandMap(client *pokeapi.PokeClient, _input string) error {
 	url := client.Config.Next
 	if url == nil {
-		url = &client.BaseURL
+		baseurl := client.BaseURL + "location-area/"
+		url = &baseurl
 	}
 	pokeAreaData, err := client.GetPokeAreaData(*url)
 	if err != nil {
@@ -127,6 +135,25 @@ func commandExplore(client *pokeapi.PokeClient, location string) error {
 	}
 
 	return nil
+}
+
+func commandCatch(client *pokeapi.PokeClient, pokemon string) error {
+	pokemonData, err := client.GetPokemonData(pokemon)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonData.Name)
+	successChance := min(1.0, 75.0/float64(pokemonData.BaseExperience))
+	randomChance := rand.Float64()
+
+	if randomChance < successChance {
+		fmt.Printf("%s was caught!\n", pokemonData.Name)
+		client.Pokedex[pokemonData.Name] = pokemonData
+		return nil
+	} else {
+		fmt.Printf("%s escaped!\n", pokemonData.Name)
+		return nil
+	}
 }
 
 func main() {
