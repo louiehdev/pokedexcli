@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
 
@@ -64,9 +64,15 @@ func registerCommands() map[string]cliCommand {
 		requireInput: true,
 	}
 	supportedCommands["catch"] = cliCommand{
-		name: "catch",
-		description: "Attempt to catch inputed Pokemon",
-		callback: commandCatch,
+		name:         "catch",
+		description:  "Attempt to catch a Pokemon",
+		callback:     commandCatch,
+		requireInput: true,
+	}
+	supportedCommands["inspect"] = cliCommand{
+		name:         "inspect",
+		description:  "Get information about a caught Pokemon",
+		callback:     commandInspect,
 		requireInput: true,
 	}
 	return supportedCommands
@@ -148,10 +154,28 @@ func commandCatch(client *pokeapi.PokeClient, pokemon string) error {
 
 	if randomChance < successChance {
 		fmt.Printf("%s was caught!\n", pokemonData.Name)
-		client.Pokedex[pokemonData.Name] = pokemonData
+		client.Pokedex.Add(pokemon, pokemonData)
 		return nil
 	} else {
 		fmt.Printf("%s escaped!\n", pokemonData.Name)
+		return nil
+	}
+}
+
+func commandInspect(client *pokeapi.PokeClient, pokemon string) error {
+	if p, exists := client.Pokedex.Get(pokemon); exists {
+		fmt.Printf("Name: %s\nHeight: %v\nWeight: %v\n", p.Name, p.Height, p.Weight)
+		fmt.Println("Stats:")
+		for _, s := range p.Stats {
+			fmt.Printf(" - %v: %v\n", s.Stat.Name, s.Value)
+		}
+		fmt.Println("Types:")
+		for _, t := range p.Types {
+			fmt.Printf(" - %v\n", t.Type.Name)
+		}
+		return nil
+	} else {
+		fmt.Println("You have not caught that pokemon yet")
 		return nil
 	}
 }

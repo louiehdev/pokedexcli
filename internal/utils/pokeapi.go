@@ -8,43 +8,56 @@ import (
 	pokecache "github.com/louiehdev/pokedexcli/internal/cache"
 )
 
-type PokeClient struct {
-	httpClient *http.Client
-	cache      *pokecache.Cache
-	BaseURL    string
-	Config     APIConfig
-	Pokedex map[string]Pokemon
-}
-
-type APIConfig struct {
-	Next     *string
-	Previous *string
-}
-
-type PokeData struct {
-	Name string
-	Url  string
+type CommonData struct {
+	Name string `json:"name"`
+	Url  string `json:"url"`
 }
 
 type PokeAreaData struct {
 	Next      *string
 	Previous  *string
-	Locations []PokeData `json:"results"`
+	Locations []CommonData `json:"results"`
 }
 
 type PokeLocationData struct {
-	Location          PokeData
+	Location          CommonData
 	PokemonEncounters []PokeEncounter `json:"pokemon_encounters"`
 }
 
 type PokeEncounter struct {
-	Pokemon PokeData
+	Pokemon CommonData
 }
 
-type Pokemon struct {
-	Id int
-	Name string
-	BaseExperience int `json:"base_experience"`
+type PokemonData struct {
+	Id             int        `json:"id"`
+	Name           string     `json:"name"`
+	BaseExperience int        `json:"base_experience"`
+	Height         int        `json:"height"`
+	Weight         int        `json:"weight"`
+	Stats          []PokeStat `json:"stats"`
+	Types          []PokeType `json:"types"`
+}
+
+type PokeStat struct {
+	Stat  CommonData `json:"stat"`
+	Value int        `json:"base_stat"`
+}
+
+type PokeType struct {
+	Type CommonData `json:"type"`
+}
+
+type PokeClient struct {
+	httpClient *http.Client
+	cache      *pokecache.Cache
+	BaseURL    string
+	Config     APIConfig
+	Pokedex    Pokedex
+}
+
+type APIConfig struct {
+	Next     *string
+	Previous *string
 }
 
 func (p *PokeClient) GetPokeAreaData(url string) (PokeAreaData, error) {
@@ -102,8 +115,8 @@ func (p *PokeClient) GetPokeLocationData(location string) (PokeLocationData, err
 	return locationData, nil
 }
 
-func (p *PokeClient) GetPokemonData(pokename string) (Pokemon, error) {
-	var pokemonData Pokemon
+func (p *PokeClient) GetPokemonData(pokename string) (PokemonData, error) {
+	var pokemonData PokemonData
 
 	url := p.BaseURL + "pokemon/" + pokename
 	if entry, exists := p.cache.Get(url); exists {
@@ -112,21 +125,43 @@ func (p *PokeClient) GetPokemonData(pokename string) (Pokemon, error) {
 	}
 	res, err := p.httpClient.Get(url)
 	if err != nil {
-		return Pokemon{}, err
+		return PokemonData{}, err
 	}
 	defer res.Body.Close()
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		return Pokemon{}, err
+		return PokemonData{}, err
 	}
 	p.cache.Add(url, data)
 
 	if err := json.Unmarshal(data, &pokemonData); err != nil {
-		return Pokemon{}, err
+		return PokemonData{}, err
 	}
 
 	return pokemonData, nil
+}
+
+type Pokedex struct {
+	//mu        sync.Mutex
+	Data map[string]PokemonData
+}
+
+func (d *Pokedex) Add(key string, data PokemonData) {
+	//d.mu.Lock()
+	//defer d.mu.Unlock()
+	d.Data[key] = data
+}
+
+func (d *Pokedex) Get(key string) (PokemonData, bool) {
+	//d.mu.Lock()
+	//defer d.mu.Unlock()
+	pokemon, exists := d.Data[key]
+	if exists {
+		return pokemon, true
+	} else {
+		return PokemonData{}, false
+	}
 }
 
 func NewClient(cache *pokecache.Cache) PokeClient {
@@ -135,6 +170,6 @@ func NewClient(cache *pokecache.Cache) PokeClient {
 	client.cache = cache
 	client.BaseURL = "https://pokeapi.co/api/v2/"
 	client.Config = APIConfig{}
-	client.Pokedex = make(map[string]Pokemon)
+	client.Pokedex = Pokedex{Data: make(map[string]PokemonData)}
 	return client
 }
