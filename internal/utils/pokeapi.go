@@ -143,19 +143,14 @@ func (p *PokeClient) GetPokemonData(pokename string) (PokemonData, error) {
 }
 
 type Pokedex struct {
-	//mu        sync.Mutex
 	Data map[string]PokemonData
 }
 
 func (d *Pokedex) Add(key string, data PokemonData) {
-	//d.mu.Lock()
-	//defer d.mu.Unlock()
 	d.Data[key] = data
 }
 
 func (d *Pokedex) Get(key string) (PokemonData, bool) {
-	//d.mu.Lock()
-	//defer d.mu.Unlock()
 	pokemon, exists := d.Data[key]
 	if exists {
 		return pokemon, true

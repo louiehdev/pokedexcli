@@ -75,6 +75,12 @@ func registerCommands() map[string]cliCommand {
 		callback:     commandInspect,
 		requireInput: true,
 	}
+	supportedCommands["pokedex"] = cliCommand{
+		name:         "pokedex",
+		description:  "Shows caught Pokemon in your Pokedex",
+		callback:     commandPokedex,
+		requireInput: false,
+	}
 	return supportedCommands
 }
 
@@ -153,7 +159,7 @@ func commandCatch(client *pokeapi.PokeClient, pokemon string) error {
 	randomChance := rand.Float64()
 
 	if randomChance < successChance {
-		fmt.Printf("%s was caught!\n", pokemonData.Name)
+		fmt.Printf("%s was caught! It can now be inspected.\n", pokemonData.Name)
 		client.Pokedex.Add(pokemon, pokemonData)
 		return nil
 	} else {
@@ -178,6 +184,15 @@ func commandInspect(client *pokeapi.PokeClient, pokemon string) error {
 		fmt.Println("You have not caught that pokemon yet")
 		return nil
 	}
+}
+
+func commandPokedex(client *pokeapi.PokeClient, _input string) error {
+	pokedexData := client.Pokedex.Data
+	fmt.Println("Your Pokedex:")
+	for pokemon := range pokedexData {
+		fmt.Printf(" - %s\n", pokemon)
+	}
+	return nil
 }
 
 func main() {
